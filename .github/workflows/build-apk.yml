@@ -1,0 +1,96 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:   # allows manual trigger from GitHub UI
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up JDK 17 (most common for modern Android in 2026)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'   # Adoptium / Eclipse Temurin
+
+      # Cache Gradle dependencies to make builds faster
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            \~/.gradle/caches
+            \~/.gradle/wrapper
+          key: \( {{ runner.os }}-gradle- \){{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # Grant execute permission to gradlew
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # Build debug APK (always succeeds, good for testing)
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      # Upload debug APK as artifact
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      # ────────────────────────────────────────────────
+      # Release APK (only on push to main or manual trigger)
+      # ────────────────────────────────────────────────
+      - name: Build release APK
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          # These secrets must be set in repo Settings → Secrets and variables → Actions
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # Decode and save keystore
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > release.keystore
+
+          # Create signing config properties file
+          cat << EOF > app/release.keystore.properties
+          storeFile=release.keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+          # Build release APK
+          ./gradlew assembleRelease --stacktrace
+
+      # Upload release APK (only if built)
+      - name: Upload release APK
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release.apk
+          path: app/build/outputs/apk/release/app-release.apk
+
+      # Optional: Auto-upload release APK to GitHub Releases (on tag push)
+      - name: Create GitHub Release & upload APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/app-release.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false
