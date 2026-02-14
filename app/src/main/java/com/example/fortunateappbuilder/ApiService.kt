@@ -245,13 +245,17 @@ suspend fun triggerCodemagicBuild(token: String, appId: String, workflowId: Stri
 }
 
 fun extractPreviewJson(reply: String): String? {
-    val start = reply.indexOf("{", reply.indexOf("preview_json") ?: 0)
+    val previewIdx = reply.indexOf("preview_json")
+    val searchFrom = if (previewIdx >= 0) previewIdx else 0
+    val start = reply.indexOf("{", searchFrom)
     val end = reply.lastIndexOf("}") + 1
     return if (start >= 0 && end > start) reply.substring(start, end) else null
 }
 
 fun extractFlutterProject(reply: String): FlutterProject? {
-    val start = reply.indexOf("{", reply.indexOf("project") ?: reply.indexOf("{"))
+    val projIdx = reply.indexOf("project")
+    val searchFrom = if (projIdx >= 0) projIdx else 0
+    val start = reply.indexOf("{", searchFrom)
     val end = reply.lastIndexOf("}") + 1
     val jsonStr = if (start >= 0 && end > start) reply.substring(start, end) else return null
 

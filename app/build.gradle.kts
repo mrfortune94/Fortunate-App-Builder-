@@ -1,7 +1,8 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.google.gms.google-services") version "4.4.2" apply false   // ← ADD THIS
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -14,15 +15,11 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-        multiDexEnabled = true   // good for Firebase
+        multiDexEnabled = true
     }
 
     buildFeatures {
         compose = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.17"
     }
 
     compileOptions {
@@ -46,11 +43,11 @@ dependencies {
     implementation("androidx.compose.material3:material3")
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))  // latest as of 2026
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-remote-config-ktx")
-    implementation("com.google.firebase:firebase-analytics-ktx") // optional
+    implementation("com.google.firebase:firebase-analytics-ktx")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
