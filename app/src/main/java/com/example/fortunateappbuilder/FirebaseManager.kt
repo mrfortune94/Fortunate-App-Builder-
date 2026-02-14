@@ -1,29 +1,70 @@
-{
-  "project_info": {
-    "project_number": "423086632044",
-    "project_id": "fencewise-57f7b",
-    "storage_bucket": "fencewise-57f7b.firebasestorage.app"
-  },
-  "client": [
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:423086632044:android:594e6009089726e17efc49",
-        "android_client_info": {
-          "package_name": "com.fencewise.app"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDnonNsqQOYBCJ07xdI61ZXFnJ11otJ0C0"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
+package com.example.fortunateappbuilder
+
+import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.app
+import kotlinx.coroutines.tasks.await
+
+object FirebaseManager {
+    private val auth: FirebaseAuth = Firebase.auth
+    private val db: FirebaseFirestore = Firebase.firestore
+
+    val currentUserId: String?
+        get() = auth.currentUser?.uid
+
+    suspend fun signInAnonymously(): Result<String> = runCatching {
+        val result = auth.signInAnonymously().await()
+        result.user?.uid ?: throw Exception("No UID after anonymous sign-in")
     }
-  ],
-  "configuration_version": "1"
+
+    suspend fun saveChatHistory(userId: String, messages: List<Message>) {
+        db.collection("users")
+            .document(userId)
+            .collection("chats")
+            .document("current_chat")
+            .set(mapOf("messages" to messages.map { mapOf("text" to it.text, "isUser" to it.isUser) }))
+            .await()
+    }
+
+    suspend fun loadChatHistory(userId: String): List<Message>? {
+        val doc = db.collection("users")
+            .document(userId)
+            .collection("chats")
+            .document("current_chat")
+            .get()
+            .await()
+
+        val list = doc.get("messages") as? List<Map<String, Any>>
+        return list?.map {
+            Message(
+                text = it["text"] as String,
+                isUser = it["isUser"] as Boolean
+            )
+        }
+    }
+
+    suspend fun saveGeneratedProject(userId: String, projectName: String, projectJson: String) {
+        db.collection("users")
+            .document(userId)
+            .collection("projects")
+            .document(projectName)
+            .set(mapOf(
+                "name" to projectName,
+                "json" to projectJson,
+                "timestamp" to System.currentTimeMillis()
+            ))
+            .await()
+    }
+
+    suspend fun getSavedProjects(userId: String): List<String> {
+        val snapshot = db.collection("users")
+            .document(userId)
+            .collection("projects")
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { it.getString("name") }
+    }
 }
