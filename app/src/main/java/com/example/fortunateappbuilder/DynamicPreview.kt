@@ -3,6 +3,7 @@ package com.example.fortunateappbuilder
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
@@ -13,12 +14,17 @@ fun DynamicPreview(jsonStr: String?) {
         Text("No preview available")
         return
     }
-    try {
-        val root = JSONObject(jsonStr)
-        RenderNode(root, Modifier.fillMaxSize().padding(8.dp))
-    } catch (e: Exception) {
-        Text("Preview parse error: ${e.message}")
+    val parseResult = remember(jsonStr) {
+        try {
+            Result.success(JSONObject(jsonStr))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
+    parseResult.fold(
+        onSuccess = { root -> RenderNode(root, Modifier.fillMaxSize().padding(8.dp)) },
+        onFailure = { e -> Text("Preview parse error: ${e.message}") }
+    )
 }
 
 @Composable
