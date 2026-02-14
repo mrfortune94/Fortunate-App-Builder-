@@ -63,18 +63,14 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          # Decode and save keystore
-          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > release.keystore
+          # If signing secrets are configured, set up the release keystore
+          if [ -n "$SIGNING_KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
+            echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > release.keystore
+            printf 'storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+              "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > release.keystore.properties
+          fi
 
-          # Create signing config properties file
-          cat << EOF > app/release.keystore.properties
-          storeFile=release.keystore
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
-
-          # Build release APK
+          # Build release APK (falls back to debug signing if no keystore configured)
           ./gradlew assembleRelease --stacktrace
 
       # Upload release APK (only if built)
