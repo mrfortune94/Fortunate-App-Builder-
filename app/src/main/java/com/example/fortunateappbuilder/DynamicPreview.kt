@@ -21,10 +21,12 @@ fun DynamicPreview(jsonStr: String?) {
             Result.failure(e)
         }
     }
-    parseResult.fold(
-        onSuccess = { root -> RenderNode(root, Modifier.fillMaxSize().padding(8.dp)) },
-        onFailure = { e -> Text("Preview parse error: ${e.message}") }
-    )
+    val root = parseResult.getOrNull()
+    if (root != null) {
+        RenderNode(root, Modifier.fillMaxSize().padding(8.dp))
+    } else {
+        Text("Preview parse error: ${parseResult.exceptionOrNull()?.message}")
+    }
 }
 
 @Composable
