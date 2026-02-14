@@ -18,6 +18,35 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        val keystorePropertiesFile = rootProject.file("release.keystore.properties")
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                val props = java.util.Properties().apply {
+                    keystorePropertiesFile.inputStream().use { load(it) }
+                }
+                storeFile = rootProject.file(
+                    props.getProperty("storeFile")
+                        ?: error("storeFile not found in release.keystore.properties")
+                )
+                storePassword = props.getProperty("storePassword")
+                    ?: error("storePassword not found in release.keystore.properties")
+                keyAlias = props.getProperty("keyAlias")
+                    ?: error("keyAlias not found in release.keystore.properties")
+                keyPassword = props.getProperty("keyPassword")
+                    ?: error("keyPassword not found in release.keystore.properties")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            val releaseConfig = signingConfigs.findByName("release")
+            signingConfig = releaseConfig ?: signingConfigs.getByName("debug")
+        }
+    }
+
     buildFeatures {
         compose = true
     }
